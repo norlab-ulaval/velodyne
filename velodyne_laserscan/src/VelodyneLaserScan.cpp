@@ -1,5 +1,6 @@
 #include "velodyne_laserscan/VelodyneLaserScan.h"
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include <std_msgs/Float32.h>
 
 namespace velodyne_laserscan {
   
@@ -8,6 +9,7 @@ VelodyneLaserScan::VelodyneLaserScan(ros::NodeHandle &nh, ros::NodeHandle &nh_pr
 {
   ros::SubscriberStatusCallback connect_cb = boost::bind(&VelodyneLaserScan::connectCb, this);
   pub_ = nh.advertise<sensor_msgs::LaserScan>("scan", 10, connect_cb, connect_cb);
+  angle_pub = nh.advertise<std_msgs::Float32>("angle0", 10);
   
   srv_.setCallback(boost::bind(&VelodyneLaserScan::reconfig, this, _1, _2));
 }
@@ -24,6 +26,9 @@ void VelodyneLaserScan::connectCb()
 
 void VelodyneLaserScan::recvCallback(const sensor_msgs::PointCloud2ConstPtr& msg)
 {
+  static float angleToPublish = 0;
+  static bool wasPublished = true;
+
   // Latch ring count
   if (!ring_count_) {
     // Check for PointCloud2 field 'ring'
@@ -116,6 +121,16 @@ void VelodyneLaserScan::recvCallback(const sensor_msgs::PointCloud2ConstPtr& msg
           const float y = it[1]; // y
           const float i = it[4]; // intensity
           const int bin = (atan2f(y, x) + (float)M_PI) / RESOLUTION;
+	  if (bin == 448) {
+            wasPublished = false;
+            angleToPublish = atan2f(y, x);
+	  }
+          if (!wasPublished && bin != 448) {
+            std_msgs::Float32 msg;
+	    msg.data = angleToPublish;
+            angle_pub.publish(msg);
+	    wasPublished = true;
+	  }
           if ((bin >= 0) && (bin < (int)SIZE)) {
             scan->ranges[bin] = sqrtf(x * x + y * y);
             scan->intensities[bin] = i;

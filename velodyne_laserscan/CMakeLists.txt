@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   nodelet
   sensor_msgs
+  std_msgs
   dynamic_reconfigure
 )
 
@@ -14,6 +15,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(CATKIN_DEPENDS
   sensor_msgs
+  std_msgs
 )
 
 include_directories(
